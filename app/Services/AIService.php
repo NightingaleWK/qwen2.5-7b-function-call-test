@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class AIService
 {
@@ -51,21 +52,33 @@ class AIService
     private function handleToolCall(array $result, string $userMessage, callable $onChunk): void
     {
         $toolCall = $result['choices'][0]['message']['tool_calls'][0];
-        $toolResponse = $this->toolManager->executeTool($toolCall['function']['name']);
+        $functionName = $toolCall['function']['name'];
+        $functionArguments = json_decode($toolCall['function']['arguments'], true) ?? [];
 
-        $secondResponse = $this->makeRequest([
-            'model' => $this->model,
-            'messages' => [
-                ['role' => 'user', 'content' => $userMessage],
-                ['role' => 'assistant', 'content' => null, 'tool_calls' => [$toolCall]],
-                ['role' => 'tool', 'content' => $toolResponse, 'tool_call_id' => $toolCall['id']]
-            ],
-            'tools' => $this->toolManager->getTools(),
-            'tool_choice' => 'auto'
-        ]);
+        try {
+            $toolResponse = $this->toolManager->executeTool($functionName, $functionArguments);
 
-        $finalResult = $secondResponse->json();
-        $this->streamResponse($finalResult['choices'][0]['message']['content'], $onChunk);
+            $secondResponse = $this->makeRequest([
+                'model' => $this->model,
+                'messages' => [
+                    ['role' => 'user', 'content' => $userMessage],
+                    ['role' => 'assistant', 'content' => null, 'tool_calls' => [$toolCall]],
+                    ['role' => 'tool', 'content' => $toolResponse, 'tool_call_id' => $toolCall['id']]
+                ],
+                'tools' => $this->toolManager->getTools(),
+                'tool_choice' => 'auto'
+            ]);
+
+            $finalResult = $secondResponse->json();
+            $this->streamResponse($finalResult['choices'][0]['message']['content'], $onChunk);
+        } catch (\Exception $e) {
+            Log::error('Tool execution failed', [
+                'tool' => $functionName,
+                'arguments' => $functionArguments,
+                'error' => $e->getMessage()
+            ]);
+            $this->streamResponse("执行出错：" . $e->getMessage(), $onChunk);
+        }
     }
 
     private function makeRequest(array $data): \Illuminate\Http\Client\Response
