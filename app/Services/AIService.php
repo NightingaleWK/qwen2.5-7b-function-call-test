@@ -30,6 +30,18 @@ class AIService
         $response = $this->makeRequest([
             'model' => $this->model,
             'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => "你是一个AI助手。请使用Markdown格式回复，遵循以下规则：\n" .
+                        "1. 使用 `代码块` 显示代码\n" .
+                        "2. 使用 **加粗** 强调重要内容\n" .
+                        "3. 使用 - 或 1. 创建列表\n" .
+                        "4. 使用 > 引用重要信息\n" .
+                        "5. 使用 ### 等标题层级\n" .
+                        "6. 使用 ```语言名 代码块``` 展示代码，并标注语言\n" .
+                        "7. 使用表格展示结构化数据\n" .
+                        "8. 保持回复的结构清晰和格式美观"
+                ],
                 ['role' => 'user', 'content' => $message],
             ],
             'tools' => $this->toolManager->getTools(),
@@ -61,6 +73,18 @@ class AIService
             $secondResponse = $this->makeRequest([
                 'model' => $this->model,
                 'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => "你是一个AI助手。请使用Markdown格式回复，遵循以下规则：\n" .
+                            "1. 使用 `代码块` 显示代码\n" .
+                            "2. 使用 **加粗** 强调重要内容\n" .
+                            "3. 使用 - 或 1. 创建列表\n" .
+                            "4. 使用 > 引用重要信息\n" .
+                            "5. 使用 ### 等标题层级\n" .
+                            "6. 使用 ```语言名 代码块``` 展示代码，并标注语言\n" .
+                            "7. 使用表格展示结构化数据\n" .
+                            "8. 保持回复的结构清晰和格式美观"
+                    ],
                     ['role' => 'user', 'content' => $userMessage],
                     ['role' => 'assistant', 'content' => null, 'tool_calls' => [$toolCall]],
                     ['role' => 'tool', 'content' => $toolResponse, 'tool_call_id' => $toolCall['id']]

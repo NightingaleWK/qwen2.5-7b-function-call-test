@@ -1,15 +1,30 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh" class="h-full">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>AI 时间助手</title>
+    <title>AI 智能助手</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 添加 Markdown 解析和代码高亮支持 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.8.0/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.8.0/lib/highlight.min.js"></script>
     <style>
+        /* 确保页面占满整个视口高度 */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 聊天容器样式 */
         .chat-container {
-            height: calc(100vh - 200px);
+            height: calc(100vh - 180px);
+            /* 减去标题和输入框的高度 */
+            overflow-y: auto;
         }
 
         .loading {
@@ -54,27 +69,109 @@
                 content: '.';
             }
         }
+
+        /* Markdown 样式 */
+        .markdown-body {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .markdown-body p {
+            margin-bottom: 1em;
+        }
+
+        .markdown-body code {
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .markdown-body pre {
+            background-color: #f6f8fa;
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+
+        .markdown-body pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3,
+        .markdown-body h4,
+        .markdown-body h5,
+        .markdown-body h6 {
+            margin-top: 1.5em;
+            margin-bottom: 1em;
+            font-weight: 600;
+        }
+
+        .markdown-body ul,
+        .markdown-body ol {
+            padding-left: 2em;
+            margin-bottom: 1em;
+        }
+
+        .markdown-body table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 1em;
+        }
+
+        .markdown-body table th,
+        .markdown-body table td {
+            border: 1px solid #dfe2e5;
+            padding: 6px 13px;
+        }
+
+        .markdown-body table tr:nth-child(2n) {
+            background-color: #f6f8fa;
+        }
+
+        /* 自定义滚动条样式 */
+        .chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
 
-<body class="bg-gray-100">
-    <div class="container mx-auto px-4 py-8">
-        <div class="max-w-3xl mx-auto">
+<body class="bg-gray-100 h-full flex flex-col">
+    <div class="flex-1 container mx-auto px-4 flex flex-col h-full">
+        <div class="flex-1 max-w-4xl mx-auto w-full flex flex-col">
             <!-- 标题 -->
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-800">AI 时间助手</h1>
-                <p class="text-gray-600 mt-2">询问当前时间，AI 助手会为您解答</p>
+            <div class="text-center py-4">
+                <h1 class="text-2xl font-bold text-gray-800">AI 智能助手</h1>
+                <p class="text-gray-600 text-sm">您的智能问答助手，可以查询时间、管理任务，以及更多功能</p>
             </div>
 
             <!-- 聊天界面 -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex-1 bg-white rounded-lg shadow-lg flex flex-col">
                 <!-- 聊天记录区域 -->
-                <div id="chat-messages" class="chat-container overflow-y-auto mb-4 space-y-4">
+                <div id="chat-messages" class="chat-container p-4 space-y-4">
                     <!-- 消息会在这里动态添加 -->
                 </div>
 
-                <!-- 输入区域 -->
-                <div class="border-t pt-4">
+                <!-- 输入区域 - 固定在底部 -->
+                <div class="border-t bg-white p-4">
                     <form id="chat-form" class="flex gap-2">
                         <input type="text" id="user-input"
                             class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -106,10 +203,19 @@
                 const messageContent = document.createElement('div');
                 messageContent.className = `max-w-[80%] rounded-lg p-3 ${
                     isUser ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'
-                } ${isTyping ? 'typing-indicator' : ''}`;
+                } ${isTyping ? 'typing-indicator' : ''} ${!isUser ? 'markdown-body' : ''}`;
 
                 if (typeof content === 'string') {
-                    messageContent.textContent = content;
+                    if (!isUser && !isTyping) {
+                        // 解析 Markdown
+                        messageContent.innerHTML = marked.parse(content);
+                        // 应用代码高亮
+                        messageContent.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                    } else {
+                        messageContent.textContent = content;
+                    }
                 } else {
                     messageContent.appendChild(content);
                 }
@@ -145,6 +251,11 @@
                 let accumulatedText = '';
                 let currentMessageElement = addMessage('', false, true);
 
+                // 自动滚动到底部的函数
+                const scrollToBottom = () => {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                };
+
                 while (true) {
                     const {
                         done,
@@ -167,11 +278,19 @@
                                 if (data.message) {
                                     // 累积文本
                                     accumulatedText += data.message;
-                                    currentMessageElement.textContent = accumulatedText;
+                                    // 解析 Markdown
+                                    currentMessageElement.innerHTML = marked.parse(accumulatedText);
+                                    // 应用代码高亮
+                                    currentMessageElement.querySelectorAll('pre code').forEach((block) => {
+                                        hljs.highlightElement(block);
+                                    });
                                     currentMessageElement.classList.remove('typing-indicator');
+                                    // 每次更新内容后滚动到底部
+                                    scrollToBottom();
                                 } else if (data.error) {
                                     currentMessageElement.textContent = '错误：' + data.error;
                                     currentMessageElement.classList.remove('typing-indicator');
+                                    scrollToBottom();
                                 }
                             } catch (e) {
                                 console.error('解析消息失败:', e);
@@ -186,11 +305,19 @@
                         const data = JSON.parse(buffer);
                         if (data.message) {
                             accumulatedText += data.message;
-                            currentMessageElement.textContent = accumulatedText;
+                            // 解析 Markdown
+                            currentMessageElement.innerHTML = marked.parse(accumulatedText);
+                            // 应用代码高亮
+                            currentMessageElement.querySelectorAll('pre code').forEach((block) => {
+                                hljs.highlightElement(block);
+                            });
                             currentMessageElement.classList.remove('typing-indicator');
+                            // 最后一次更新后也滚动到底部
+                            scrollToBottom();
                         } else if (data.error) {
                             currentMessageElement.textContent = '错误：' + data.error;
                             currentMessageElement.classList.remove('typing-indicator');
+                            scrollToBottom();
                         }
                     } catch (e) {
                         console.error('解析最后消息失败:', e);
@@ -207,6 +334,8 @@
                 // 添加用户消息
                 addMessage(message, true);
                 userInput.value = '';
+                // 发送消息后自动滚动到底部
+                chatMessages.scrollTop = chatMessages.scrollHeight;
                 setLoading(true);
 
                 try {
